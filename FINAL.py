@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime
 from io import BytesIO
+import base64
 
 # Inicializar session_state si no existe
 if "last_username" not in st.session_state:
@@ -25,6 +26,7 @@ def tiktok_id_to_date(video_id):
     timestamp_binary = binary_id[:32]
     timestamp = int(timestamp_binary, 2)
     return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
+
 
 # 📌 Función para convertir valores con 'K' y 'M' en numéricos
 def convert_to_number(value):
@@ -56,7 +58,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
     driver = setup_driver()
     url = f"https://www.tiktok.com/@{username}"
     driver.get(url)
-    time.sleep(5)
+    time.sleep(7)
     
     profile_data = {"Username": username}
 
@@ -118,7 +120,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
             # 📌 Abrir el video en nueva pestaña para obtener descripción y métricas
             driver.execute_script("window.open(arguments[0]);", link)
             driver.switch_to.window(driver.window_handles[1])
-            time.sleep(5)
+            time.sleep(7)
 
             # 📌 Extraer métricas
             def safe_extract(selector):
@@ -147,7 +149,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
             
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
-            time.sleep(5)
+            time.sleep(7)
 
             if num_videos and len(video_data) >= num_videos:
                 break  
@@ -158,7 +160,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
     return profile_data, video_data
 
 # 📌 Interfaz con Streamlit
-st.title("📌 Analiza la cuenta de TikTok")
+st.title("📌 Analiza una cuenta de TikTok")
 
 # 📌 Input de usuario
 username = st.text_input("Introduce el nombre de usuario de TikTok:")
@@ -192,7 +194,8 @@ if st.button("Obtener Datos") and username:
 
         # 📌 Calcular Engagements y ER
         df["Engagements"] = df["Likes"] + df["Comments"] + df["Shares"] + df["Saves"]
-        df["ER"] = ((df["Engagements"] / df["Views"]) * 100).round(2).astype(str) + "%"
+        df["ER_float"] = ((df["Engagements"] / df["Views"]) * 100).round(2)  # Guardamos en float
+        df["ER"] = df["ER_float"].astype(str) + "%"  # La versión para mostrar con "%"
 
         # 📌 Mostrar tabla en Streamlit
         st.subheader("📌 Datos de vídeos extraídos")
@@ -204,9 +207,6 @@ if st.button("Obtener Datos") and username:
         median_cpm_15 = df["Views"].median() * 0.015
         median_cpm_20 = df["Views"].median() * 0.020
 
-        df["ER_float"] = ((df["Engagements"] / df["Views"]) * 100).round(2)  # Guardamos en float
-        df["ER"] = df["ER_float"].astype(str) + "%"  # La versión para mostrar con "%"
-
         # Calcular AVG y MEDIAN views, Engagement y ER%
         avg_views = df["Views"].mean()
         avg_engagements = df["Engagements"].mean()
@@ -215,7 +215,7 @@ if st.button("Obtener Datos") and username:
         median_engagements = df["Engagements"].median()
         median_ER = df["ER_float"].astype(float).median()
 
-        #Mostrar Medias y Medianas de KPIs
+        # 📊 Mostrar Medias y Medianas de KPIs
         st.subheader("📊 Medias y Medianas KPIs")
         st.write(f"**Views Medias:** {avg_views:,.0f}")
         st.write(f"**Engagements Medias:** {avg_engagements:,.0f}")
@@ -224,7 +224,6 @@ if st.button("Obtener Datos") and username:
         st.write(f"**Engagements Medianas:** {median_engagements:,.0f}")
         st.write(f"**ER Mediano:** {median_ER:.2f} %")
 
-
         # 📌 Mostrar cálculos
         st.subheader("📊 Costes Objetivo")
         st.write(f"**TARGET (PROMEDIO) CPM 15:** {avg_cpm_15:.2f} €")
@@ -232,6 +231,40 @@ if st.button("Obtener Datos") and username:
         st.write(f"**TARGET (MEDIANA) CPM 15:** {median_cpm_15:.2f} €")
         st.write(f"**TARGET (MEDIANA) CPM 20:** {median_cpm_20:.2f} €")
 
-        # 📥 Descargar CSV 
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Descargar CSV", csv, f"{username}_tiktok_data.csv", "text/csv")
+        # 📌 Guardamos los datos en session_state para evitar recarga al descargar
+        if "df" not in st.session_state:
+            st.session_state.df = df
+
+        if "kpis_data" not in st.session_state:
+            st.session_state.kpis_data = pd.DataFrame([{
+                "AVG Views": f"{avg_views:,.0f}",
+                "AVG Engagements": f"{avg_engagements:,.0f}",
+                "AVG ER (%)": f"{avg_ER:.2f}",
+                "MEDIAN Views": f"{median_views:,.0f}",
+                "MEDIAN Engagements": f"{median_engagements:,.0f}",
+                "MEDIAN ER (%)": f"{median_ER:.2f}"
+            }])
+
+        if "costes_data" not in st.session_state:
+            st.session_state.costes_data = pd.DataFrame([{
+                "TARGET (PROMEDIO) CPM 15 (€)": f"{avg_cpm_15:.2f}",
+                "TARGET (PROMEDIO) CPM 20 (€)": f"{avg_cpm_20:.2f}",
+                "TARGET (MEDIANA) CPM 15 (€)": f"{median_cpm_15:.2f}",
+                "TARGET (MEDIANA) CPM 20 (€)": f"{median_cpm_20:.2f}"
+            }])
+
+        # 📌 Función para generar enlaces de descarga sin refrescar la app
+        def get_download_link(df, filename):
+            csv = df.to_csv(index=False).encode()
+            b64 = base64.b64encode(csv).decode()  # Codificar en base64
+            return f'<a href="data:file/csv;base64,{b64}" download="{filename}">📥 Descargar {filename}</a>'
+
+        # 📥 Mostrar enlaces de descarga SIN RECARGA
+        st.markdown(get_download_link(st.session_state.df, f"{username}_videos.csv"), unsafe_allow_html=True)
+        st.markdown(get_download_link(st.session_state.kpis_data, f"{username}_kpis.csv"), unsafe_allow_html=True)
+        st.markdown(get_download_link(st.session_state.costes_data, f"{username}_costes.csv"), unsafe_allow_html=True)
+
+        # 🔄 Botón manual para refrescar la búsqueda
+        if st.button("🔄 Refrescar Búsqueda"):
+            st.session_state.clear()
+            st.experimental_rerun()

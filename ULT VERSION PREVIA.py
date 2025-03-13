@@ -26,6 +26,7 @@ def tiktok_id_to_date(video_id):
     timestamp = int(timestamp_binary, 2)
     return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
 
+
 # 📌 Función para convertir valores con 'K' y 'M' en numéricos
 def convert_to_number(value):
     if isinstance(value, str):
@@ -56,7 +57,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
     driver = setup_driver()
     url = f"https://www.tiktok.com/@{username}"
     driver.get(url)
-    time.sleep(5)
+    time.sleep(7)
     
     profile_data = {"Username": username}
 
@@ -118,7 +119,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
             # 📌 Abrir el video en nueva pestaña para obtener descripción y métricas
             driver.execute_script("window.open(arguments[0]);", link)
             driver.switch_to.window(driver.window_handles[1])
-            time.sleep(5)
+            time.sleep(7)
 
             # 📌 Extraer métricas
             def safe_extract(selector):
@@ -147,7 +148,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
             
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
-            time.sleep(5)
+            time.sleep(7)
 
             if num_videos and len(video_data) >= num_videos:
                 break  
@@ -158,7 +159,7 @@ def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=T
     return profile_data, video_data
 
 # 📌 Interfaz con Streamlit
-st.title("📌 Analiza una cuenta de TikTok")
+st.title("📌 Analiza la cuenta de TikTok")
 
 # 📌 Input de usuario
 username = st.text_input("Introduce el nombre de usuario de TikTok:")
