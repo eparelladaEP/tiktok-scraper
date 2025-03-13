@@ -44,11 +44,11 @@ def convert_to_number(value):
 def setup_driver():
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")  
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--log-level=3")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+    options.add_argument("--disable-gpu")  # Agrega esto para algunos servidores
+    options.add_argument("--remote-debugging-port=9222")  # Depuración remota
+    options.add_argument("--disable-software-rasterizer") # Mejora compatibilidad en cloud
 
     service = Service(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=options)
