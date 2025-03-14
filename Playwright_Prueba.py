@@ -32,7 +32,7 @@ def convert_to_number(value):
 # 📌 Extraer datos de TikTok con Playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
         page = await browser.new_page()
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=60000)
