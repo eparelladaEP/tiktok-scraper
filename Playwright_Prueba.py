@@ -41,10 +41,44 @@ def convert_to_number(value):
 # 📌 Extraer datos de TikTok con Playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--single-process"])
         page = await browser.new_page()
         url = f"https://www.tiktok.com/@{username}"
-        await page.goto(url, timeout=60000)
+        import random
+
+        # Lista de User-Agents para rotar
+        USER_AGENTS = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        ]
+
+        async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(
+                    headless=True, 
+                    args=["--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+                )
+                page = await browser.new_page()
+
+                # Seleccionar un User-Agent aleatorio
+                user_agent = random.choice(USER_AGENTS)
+                await page.set_user_agent(user_agent)
+
+                url = f"https://www.tiktok.com/@{username}"
+                await page.goto(url, timeout=60000)
+
+                # 🔹 Pausa para evitar bloqueos
+                await asyncio.sleep(random.uniform(3, 6))
+
+                # 🔹 Esperar hasta que cargue la info del perfil
+                try:
+                    await page.wait_for_selector("h1[data-e2e='user-title']", timeout=15000)
+                except:
+                    print("⚠️ No se pudo cargar el perfil a tiempo.")
+
+        # Continúa con el resto del scraping...
+
         await asyncio.sleep(10)
 
         profile_data = {"Username": username}
