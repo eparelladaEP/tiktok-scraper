@@ -11,8 +11,7 @@ import random
 from playwright.async_api import async_playwright  # ✅ Importar la versión correcta de Playwright
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
-os.system("bash setup.sh")
-
+subprocess.run(["bash", "setup.sh"], check=True)
 
 # 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
