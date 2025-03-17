@@ -3,15 +3,16 @@ import streamlit as st
 import pandas as pd
 import asyncio
 import nest_asyncio  # Evita problemas en Streamlit con async
-from playwright.sync_api import sync_playwright
 from datetime import datetime
 import base64
 import os
 import subprocess
+from playwright.async_api import async_playwright  # ✅ Importar la versión correcta de Playwright
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
 os.system("bash setup.sh")
 
+# ✅ Instalar Playwright y Chromium si no están presentes
 if not os.path.exists("/home/adminuser/.cache/ms-playwright/chromium-1155"):
     subprocess.run(["playwright", "install", "chromium"], check=True)
 
@@ -44,7 +45,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         page = await browser.new_page()
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=60000)
-        await asyncio.sleep(5)
+        await asyncio.sleep(7)
 
         profile_data = {"Username": username}
 
@@ -99,7 +100,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
                 video_page = await browser.new_page()
                 await video_page.goto(link)
-                await asyncio.sleep(5)
+                await asyncio.sleep(7)
 
                 async def safe_extract(selector):
                     try:
