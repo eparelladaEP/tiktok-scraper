@@ -1,11 +1,11 @@
-import requests
+import os
 import streamlit as st
 
-st.title("🌍 Verificación de IP pública de Streamlit Cloud")
+st.title("🔍 Test con `curl` a TikTok")
 
 try:
-    response = requests.get("https://api64.ipify.org?format=json")
-    ip_info = response.json()
-    st.write(f"📌 La IP pública de Streamlit Cloud es: `{ip_info['ip']}`")
+    result = os.popen("curl -I https://www.tiktok.com").read()
+    st.code(result)
 except:
-    st.error("❌ No se pudo obtener la IP pública de Streamlit Cloud.")
+    st.error("❌ No se pudo ejecutar `curl` en Streamlit Cloud.")
+
