@@ -3,13 +3,17 @@ import streamlit as st
 import pandas as pd
 import asyncio
 import nest_asyncio  # Evita problemas en Streamlit con async
-from playwright.async_api import async_playwright
+from playwright.async_api import sync_playwright
 from datetime import datetime
 import base64
 import os
+from playwright.__main__ import main
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
 os.system("bash setup.sh")
+
+if not os.path.exists("/home/adminuser/.cache/ms-playwright/chromium-1155"):
+    main(["install", "chromium"])
 
 # 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
