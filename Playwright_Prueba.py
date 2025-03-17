@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import asyncio
 import nest_asyncio  # Evita problemas en Streamlit con async
-from playwright.async_api import sync_playwright
+from playwright.sync_api import sync_playwright
 from datetime import datetime
 import base64
 import os
