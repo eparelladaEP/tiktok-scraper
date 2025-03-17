@@ -35,9 +35,6 @@ def convert_to_number(value):
             return int(value)
     return 0  
 
-import random
-import asyncio
-from playwright.async_api import async_playwright
 
 # 📌 Extraer datos de TikTok con Playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
