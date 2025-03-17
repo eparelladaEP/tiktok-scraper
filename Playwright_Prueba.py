@@ -45,7 +45,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         page = await browser.new_page()
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=60000)
-        await asyncio.sleep(7)
+        await asyncio.sleep(10)
 
         profile_data = {"Username": username}
 
@@ -100,7 +100,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
                 video_page = await browser.new_page()
                 await video_page.goto(link)
-                await asyncio.sleep(7)
+                await asyncio.sleep(10)
 
                 async def safe_extract(selector):
                     try:
