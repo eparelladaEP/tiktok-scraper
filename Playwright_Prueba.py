@@ -13,9 +13,6 @@ from playwright.async_api import async_playwright  # ✅ Importar la versión co
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
 os.system("bash setup.sh")
 
-# ✅ Instalar Playwright y Chromium si no están presentes
-if not os.path.exists("/home/adminuser/.cache/ms-playwright/chromium-1155"):
-    subprocess.run(["playwright", "install", "chromium"], check=True)
 
 # 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
