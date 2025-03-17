@@ -55,16 +55,23 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         user_agent = random.choice(USER_AGENTS)
 
         # ✅ Crear contexto con User-Agent
-        context = await browser.new_context(user_agent=user_agent)
+        context = await browser.new_context(
+            user_agent=user_agent,
+            viewport={"width": random.randint(1200, 1400), "height": random.randint(700, 900)},  # 🔹 Cambia el tamaño de la ventana
+            permissions=["microphone", "camera"],  # 🔹 WebRTC: Simula acceso a micrófono/cámara
+            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},  # 🔹 Agrega headers para parecer más real
+        )
         page = await context.new_page()
 
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=120000)
 
         # 🔹 Simulación de actividad humana para evitar bloqueos
-        await page.mouse.move(random.randint(50, 300), random.randint(50, 300))
-        await page.mouse.click(random.randint(100, 500), random.randint(100, 500))
-        await asyncio.sleep(random.uniform(10, 15))  # Pausa aleatoria antes de extraer datos
+        await page.mouse.move(random.randint(50, 500), random.randint(50, 500))
+        await page.mouse.click(random.randint(200, 600), random.randint(200, 600))
+        await asyncio.sleep(random.uniform(3, 7))  # Pausa aleatoria antes de extraer datos
+        await page.keyboard.press("ArrowDown")
+        await asyncio.sleep(random.uniform(10, 15))  # 🔹 Pausa aleatoria antes de extraer datos
 
         profile_data = {"Username": username}
 
@@ -120,7 +127,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
                 video_page = await context.new_page()
                 await video_page.goto(link)
-                await asyncio.sleep(random.uniform(5, 10))  # 🔹 Espera aleatoria para evitar bloqueos
+                await asyncio.sleep(random.uniform(10, 15))  # 🔹 Espera aleatoria para evitar bloqueos
 
                 async def safe_extract(selector):
                     try:
