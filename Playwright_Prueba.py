@@ -39,13 +39,16 @@ def convert_to_number(value):
             return int(value)
     return 0  
 
+import random
+import asyncio
+from playwright.async_api import async_playwright
+
 # 📌 Extraer datos de TikTok con Playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=[
             "--no-sandbox", "--disable-dev-shm-usage", "--single-process"
         ])
-        page = await browser.new_page()
 
         # 🔹 Rotación de User-Agent
         USER_AGENTS = [
@@ -53,7 +56,11 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
         ]
-        await page.set_user_agent(random.choice(USER_AGENTS))
+        user_agent = random.choice(USER_AGENTS)
+
+        # ✅ Crear contexto con User-Agent
+        context = await browser.new_context(user_agent=user_agent)
+        page = await context.new_page()
 
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=60000)
@@ -114,7 +121,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                     views = 0
 
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
-                video_page = await browser.new_page()
+                video_page = await context.new_page()
                 await video_page.goto(link)
                 await asyncio.sleep(random.uniform(5, 10))  # 🔹 Espera aleatoria para evitar bloqueos
 
@@ -150,6 +157,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
 
         await browser.close()
         return profile_data, video_data
+
 
 # 📌 Interfaz con Streamlit
 st.title("📌 Analiza una cuenta de TikTok")
