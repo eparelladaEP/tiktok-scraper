@@ -71,7 +71,10 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         await page.mouse.click(random.randint(200, 600), random.randint(200, 600))
         await asyncio.sleep(random.uniform(3, 7))  # Pausa aleatoria antes de extraer datos
         await page.keyboard.press("ArrowDown")
+
         await asyncio.sleep(random.uniform(10, 15))  # 🔹 Pausa aleatoria antes de extraer datos
+        await page.screenshot(path="debug_screenshot.png", full_page=True)
+        st.image("debug_screenshot.png", caption="Captura de pantalla en Streamlit Cloud")
 
         profile_data = {"Username": username}
 
@@ -93,14 +96,34 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
             profile_data["Followers"] = "N/A"
         
         # 📌 Extraer información de los vídeos
-        video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
-        st.write(f"🔎 Videos encontrados: {len(video_elements)}")
-        video_data = []
+        # 🔹 Forzar scroll para cargar videos
+        for _ in range(5):
+            await page.mouse.wheel(0, 3000)
+            await asyncio.sleep(3)
 
+        # 🔹 Intentar encontrar los videos con múltiples selectores
+        video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
+        if len(video_elements) == 0:  # Si no encuentra videos, probar con otro selector
+            video_elements = await page.query_selector_all("div.tiktok-x6y88p-DivItemContainerV2")
+
+        st.write(f"🔎 Videos encontrados después del scroll: {len(video_elements)}")
+
+        # 📸 Si no encuentra videos, tomar una captura de pantalla
+        if len(video_elements) == 0:
+            await page.screenshot(path="debug_screenshot.png", full_page=True)
+            st.image("debug_screenshot.png", caption="Captura de pantalla de la página de TikTok")
+
+        video_data = []
         for idx, video in enumerate(video_elements, start=1):
             try:
                 link_element = await video.query_selector("a")
+                if not link_element:
+                    continue  # 🔹 Si no hay enlace, salta este video
+                
                 link = await link_element.get_attribute("href")
+                if not link:
+                    continue  # 🔹 Si no hay link, salta este video
+
                 video_id = link.split("/")[-1]
                 date = tiktok_id_to_date(video_id)
 
@@ -126,8 +149,13 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
 
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
                 video_page = await context.new_page()
-                await video_page.goto(link)
-                await asyncio.sleep(random.uniform(10, 15))  # 🔹 Espera aleatoria para evitar bloqueos
+                try:
+                    await video_page.goto(link, timeout=30000)  # 🔹 Manejo de timeout
+                    await asyncio.sleep(random.uniform(10, 15))  # 🔹 Espera aleatoria para evitar bloqueos
+                except:
+                    st.write(f"⚠️ No se pudo cargar el video: {link}")
+                    await video_page.close()
+                    continue  # 🔹 Si la carga falla, sigue con el siguiente video
 
                 async def safe_extract(selector):
                     try:
@@ -156,7 +184,8 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
 
                 if num_videos and len(video_data) >= num_videos:
                     break  
-            except:
+            except Exception as e:
+                st.write(f"⚠️ Error en el procesamiento del video {idx}: {e}")
                 continue
 
         await browser.close()
