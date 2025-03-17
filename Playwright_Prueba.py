@@ -43,7 +43,7 @@ from playwright.async_api import async_playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=[
-            "--no-sandbox", "--disable-dev-shm-usage", "--single-process"
+            "--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-dev-shm-usage"
         ])
 
         # 🔹 Rotación de User-Agent
@@ -59,12 +59,12 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         page = await context.new_page()
 
         url = f"https://www.tiktok.com/@{username}"
-        await page.goto(url, timeout=60000)
+        await page.goto(url, timeout=120000)
 
         # 🔹 Simulación de actividad humana para evitar bloqueos
         await page.mouse.move(random.randint(50, 300), random.randint(50, 300))
         await page.mouse.click(random.randint(100, 500), random.randint(100, 500))
-        await asyncio.sleep(random.uniform(3, 6))  # Pausa aleatoria antes de extraer datos
+        await asyncio.sleep(random.uniform(10, 15))  # Pausa aleatoria antes de extraer datos
 
         profile_data = {"Username": username}
 
@@ -87,6 +87,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         
         # 📌 Extraer información de los vídeos
         video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
+        st.write(f"🔎 Videos encontrados: {len(video_elements)}")
         video_data = []
 
         for idx, video in enumerate(video_elements, start=1):
