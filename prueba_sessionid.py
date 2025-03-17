@@ -56,11 +56,13 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
 
         # ✅ Crear contexto con User-Agent
         context = await browser.new_context(
-            user_agent=user_agent,
-            viewport={"width": random.randint(1200, 1400), "height": random.randint(700, 900)},  # 🔹 Cambia el tamaño de la ventana
-            permissions=["microphone", "camera"],  # 🔹 WebRTC: Simula acceso a micrófono/cámara
-            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},  # 🔹 Agrega headers para parecer más real
+        storage_state="tiktok_session.json",  # ✅ Usa la sesión autenticada
+        user_agent=user_agent,
+        viewport={"width": random.randint(1200, 1400), "height": random.randint(700, 900)},  # 🔹 Cambia el tamaño de la ventana
+        permissions=["microphone", "camera"],  # 🔹 WebRTC: Simula acceso a micrófono/cámara
+        extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},  # 🔹 Agrega headers para parecer más real
         )
+
         page = await context.new_page()
 
         url = f"https://www.tiktok.com/@{username}"
