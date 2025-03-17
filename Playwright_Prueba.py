@@ -7,13 +7,13 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime
 import base64
 import os
-from playwright.__main__ import main
+import subprocess
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
 os.system("bash setup.sh")
 
 if not os.path.exists("/home/adminuser/.cache/ms-playwright/chromium-1155"):
-    main(["install", "chromium"])
+    subprocess.run(["playwright", "install", "chromium"], check=True)
 
 # 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
