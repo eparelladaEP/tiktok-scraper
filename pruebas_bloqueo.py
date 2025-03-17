@@ -4,7 +4,7 @@ import streamlit as st
 st.title("🔍 Test de conexión a TikTok desde Streamlit Cloud")
 
 # URL del perfil de TikTok (puedes cambiarla por cualquier otra)
-tiktok_url = "https://www.tiktok.com/@tiktok"
+tiktok_url = "https://www.tiktok.com/@primevideoes"
 
 try:
     response = requests.get(tiktok_url, timeout=10)
