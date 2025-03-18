@@ -8,12 +8,13 @@ import base64
 import os
 import subprocess
 import random
+from playwright_stealth import stealth_async
 from playwright.async_api import async_playwright  # ✅ Importar la versión correcta de Playwright
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
 subprocess.run(["bash", "setup.sh"], check=True)
 
-# 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
+# 🔹 Aplicar nest_asyncio para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
 
 # 📌 Función para convertir el ID del video en fecha
@@ -60,6 +61,8 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         )
         page = await context.new_page()
 
+        await stealth_async(page)
+
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=120000)
 
@@ -92,47 +95,65 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
             profile_data["Followers"] = "N/A"
         
         # 📌 Extraer información de los vídeos
-        # 🔹 Forzar scroll para cargar videos
         # 🔹 Cargar videos dinámicamente con scroll infinito
 
-        max_scroll_attempts = 50
+        max_scroll_attempts = 50  # 🔹 Intentos máximos de scroll
         prev_video_count = 0
         scroll_attempt = 0
 
         while scroll_attempt < max_scroll_attempts:
-            await page.mouse.wheel(0, 3000)  # Simula un scroll grande
-            await asyncio.sleep(random.uniform(5, 8))  # Espera más tiempo para permitir carga de videos
+            # 📌 Capturar el número de vídeos antes del scroll
+            video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
+            if len(video_elements) == 0:
+                video_elements = await page.query_selector_all("div.tiktok-x6y88p-DivItemContainerV2")
+
+            prev_video_count = len(video_elements)
+
+            # 🔹 Simular scroll grande para cargar más vídeos
+            await page.mouse.wheel(0, 3000)
+            await asyncio.sleep(random.uniform(5, 8))  # 🔹 Espera más tiempo para permitir carga de vídeos
             
             # 🔹 Simulación de interacción humana aleatoria
             await page.mouse.move(random.randint(50, 500), random.randint(50, 500))
             await page.mouse.click(random.randint(200, 600), random.randint(200, 600))
             await asyncio.sleep(random.uniform(2, 5))
 
-            # 📌 Verificar cuántos videos se han cargado
+            # 📌 Verificar si se han cargado más vídeos
             video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
             if len(video_elements) == 0:
                 video_elements = await page.query_selector_all("div.tiktok-x6y88p-DivItemContainerV2")
 
-            # 📌 Si no se han cargado más videos, detener el bucle
+            st.write(f"🔎 Videos detectados en el DOM después del scroll {scroll_attempt + 1}: {len(video_elements)}")
+
+            # 📌 Si no se han cargado más vídeos, detener el bucle
             if len(video_elements) == prev_video_count:
+                st.write("🚨 No se cargaron más vídeos, deteniendo scroll.")
                 break
-            else:
-                prev_video_count = len(video_elements)
 
             scroll_attempt += 1  # Incrementar el contador de intentos
 
-        st.write(f"🔎 Videos encontrados después del scroll: {len(video_elements)}")
+        # 🔹 Espera final después del último scroll para asegurar carga completa
+        st.write("⌛ Esperando 10 segundos extra para permitir carga de más vídeos...")
+        await asyncio.sleep(10)
 
-
-        # 🔹 Intentar encontrar los videos con múltiples selectores
+        # 📌 Última detección de vídeos en el DOM
         video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
-        if len(video_elements) == 0:  # Si no encuentra videos, probar con otro selector
+        if len(video_elements) == 0:
             video_elements = await page.query_selector_all("div.tiktok-x6y88p-DivItemContainerV2")
 
-        # 📸 Si no encuentra videos, tomar una captura de pantalla
+        # 🔹 Si sigue detectando pocos vídeos, probar con un selector más genérico
+        if len(video_elements) < 36:  # 🔹 Si sigue con pocos vídeos, probar un selector más flexible
+            st.write("⚠️ Pocos vídeos detectados, intentando con otro selector...")
+            video_elements = await page.query_selector_all("div[data-e2e*='video']")
+
+        # 📌 Mensaje final de conteo de vídeos
+        st.write(f"🔎 Videos encontrados después del scroll: {len(video_elements)}")
+
+        # 📸 Captura de pantalla solo si no encontró ningún vídeo
         if len(video_elements) == 0:
             await page.screenshot(path="debug_screenshot.png", full_page=True)
             st.image("debug_screenshot.png", caption="Captura de pantalla de la página de TikTok")
+
 
         video_data = []
         for idx, video in enumerate(video_elements, start=1):
@@ -222,7 +243,7 @@ option = st.radio("¿Cómo deseas analizar los vídeos?", ["Cantidad de vídeos"
 include_pinned = st.checkbox("Incluir vídeos anclados", value=True)
 
 if option == "Cantidad de vídeos":
-    num_videos = st.slider("Número de vídeos a analizar:", 1, 50, 10)
+    num_videos = st.slider("Número de vídeos a analizar:", 1, 36, 10)
     date_range = None
 else:
     num_videos = None
@@ -334,4 +355,3 @@ if st.button("Obtener Datos") and username:
                 if key in st.session_state:
                     del st.session_state[key]
             st.experimental_rerun()
-
