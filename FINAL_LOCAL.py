@@ -69,10 +69,10 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         # 🔹 Simulación de actividad humana para evitar bloqueos
         await page.mouse.move(random.randint(50, 500), random.randint(50, 500))
         await page.mouse.click(random.randint(200, 600), random.randint(200, 600))
-        await asyncio.sleep(7)  # Pausa aleatoria antes de extraer datos
+        await asyncio.sleep(9)  # Pausa aleatoria antes de extraer datos
         await page.keyboard.press("ArrowDown")
 
-        await asyncio.sleep(6)  # 🔹 Pausa aleatoria antes de extraer datos
+        await asyncio.sleep(9)  # 🔹 Pausa aleatoria antes de extraer datos
 
 
         profile_data = {"Username": username}
@@ -98,7 +98,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
         # 🔹 Forzar scroll para cargar videos
         for _ in range(7):
             await page.mouse.wheel(0, 5000)
-            await asyncio.sleep(3)
+            await asyncio.sleep(7)
 
         # 🔹 Intentar encontrar los videos con múltiples selectores
         video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
@@ -150,7 +150,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                 video_page = await context.new_page()
                 try:
                     await video_page.goto(link, timeout=30000)  # 🔹 Manejo de timeout
-                    await asyncio.sleep(6)  # 🔹 Espera aleatoria para evitar bloqueos
+                    await asyncio.sleep(7)  # 🔹 Espera aleatoria para evitar bloqueos
                 except:
                     st.write(f"⚠️ No se pudo cargar el video: {link}")
                     await video_page.close()

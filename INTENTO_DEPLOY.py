@@ -5,19 +5,15 @@ import asyncio
 import nest_asyncio  # Evita problemas en Streamlit con async
 from datetime import datetime
 import base64
-import time
 import os
 import subprocess
+import random
 from playwright.async_api import async_playwright  # ✅ Importar la versión correcta de Playwright
 
 # Ejecutar setup.sh automáticamente al iniciar la app en Streamlit Cloud
-os.system("bash setup.sh")
+subprocess.run(["bash", "setup.sh"], check=True)
 
-# ✅ Instalar Playwright y Chromium si no están presentes
-if not os.path.exists("/home/adminuser/.cache/ms-playwright/chromium-1155"):
-    subprocess.run(["playwright", "install", "chromium"], check=True)
-
-# 🔹 Aplicar `nest_asyncio` para evitar conflictos con asyncio en Streamlit
+# 🔹 Aplicar nest_asyncio para evitar conflictos con asyncio en Streamlit
 nest_asyncio.apply()
 
 # 📌 Función para convertir el ID del video en fecha
@@ -39,23 +35,49 @@ def convert_to_number(value):
             return int(value)
     return 0  
 
+import random
+import asyncio
+from playwright.async_api import async_playwright
+
 # 📌 Extraer datos de TikTok con Playwright
 async def get_tiktok_data(username, num_videos=None, date_range=None, include_pinned=True):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-dev-shm-usage", "--single-process", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding"]
+        browser = await p.chromium.launch(headless=False, args=[
+            "--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-dev-shm-usage"
+        ])
+
+        # 🔹 Rotación de User-Agent
+        USER_AGENTS = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        ]
+        user_agent = random.choice(USER_AGENTS)
+
+        # ✅ Crear contexto con User-Agent
+        context = await browser.new_context(
+            user_agent=user_agent,
+            viewport={"width": random.randint(1200, 1400), "height": random.randint(700, 900)},  # 🔹 Cambia el tamaño de la ventana
+            permissions=["microphone", "camera"],  # 🔹 WebRTC: Simula acceso a micrófono/cámara
+            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},  # 🔹 Agrega headers para parecer más real
         )
-        page = await browser.new_page()
+        page = await context.new_page()
+
         url = f"https://www.tiktok.com/@{username}"
         await page.goto(url, timeout=120000)
-        await page.wait_for_load_state("domcontentloaded", timeout=30000)
-        await page.wait_for_load_state("networkidle", timeout=30000)
-        await asyncio.sleep(10)
+
+        # 🔹 Simulación de actividad humana para evitar bloqueos
+        await page.mouse.move(random.randint(50, 500), random.randint(50, 500))
+        await page.mouse.click(random.randint(200, 600), random.randint(200, 600))
+        await asyncio.sleep(9)  # Pausa aleatoria antes de extraer datos
+        await page.keyboard.press("ArrowDown")
+
+        await asyncio.sleep(9)  # 🔹 Pausa aleatoria antes de extraer datos
+
 
         profile_data = {"Username": username}
 
-        # 📌 Extraer información del perfil
+        # 📌 Extraer información del perfil con manejo de errores
         try:
             profile_data["Name"] = await page.inner_text("h1[data-e2e='user-title']")
         except:
@@ -73,25 +95,34 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
             profile_data["Followers"] = "N/A"
         
         # 📌 Extraer información de los vídeos
+        # 🔹 Forzar scroll para cargar videos
+        for _ in range(7):
+            await page.mouse.wheel(0, 5000)
+            await asyncio.sleep(7)
 
-        async def scroll_down(page, max_scrolls=10, delay=2):
-            """Hace scroll hacia abajo para cargar más videos"""
-            for _ in range(max_scrolls):
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
-                await asyncio.sleep(delay)  # Espera para cargar más videos
-                time.sleep(0.5)  # Pequeña pausa para simular uso humano
-
-         # 🔹 Hacer scroll para cargar más vídeos
-        await scroll_down(page, max_scrolls=15, delay=2)  # Ajusta max_scrolls si sigue detectando pocos videos        
+        # 🔹 Intentar encontrar los videos con múltiples selectores
         video_elements = await page.query_selector_all("div[data-e2e='user-post-item']")
-        video_data = []
+        if len(video_elements) == 0:  # Si no encuentra videos, probar con otro selector
+            video_elements = await page.query_selector_all("div.tiktok-x6y88p-DivItemContainerV2")
 
         st.write(f"🔎 Videos encontrados después del scroll: {len(video_elements)}")
 
+        # 📸 Si no encuentra videos, tomar una captura de pantalla
+        if len(video_elements) == 0:
+            await page.screenshot(path="debug_screenshot.png", full_page=True)
+            st.image("debug_screenshot.png", caption="Captura de pantalla de la página de TikTok")
+
+        video_data = []
         for idx, video in enumerate(video_elements, start=1):
             try:
                 link_element = await video.query_selector("a")
+                if not link_element:
+                    continue  # 🔹 Si no hay enlace, salta este video
+                
                 link = await link_element.get_attribute("href")
+                if not link:
+                    continue  # 🔹 Si no hay link, salta este video
+
                 video_id = link.split("/")[-1]
                 date = tiktok_id_to_date(video_id)
 
@@ -105,9 +136,7 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                 # 📌 Filtrar por fecha si se seleccionó periodo de análisis
                 if date_range and len(date_range) == 2:
                     start_date, end_date = date_range
-                    start_date = start_date.strftime('%Y-%m-%d')  # 🔹 Convertir a string
-                    end_date = end_date.strftime('%Y-%m-%d')  # 🔹 Convertir a string
-                    if not (start_date <= date <= end_date):
+                    if not (start_date.strftime('%Y-%m-%d') <= date <= end_date.strftime('%Y-%m-%d')):
                         continue
 
                 # 📌 Extraer Views directamente desde el video en el perfil
@@ -118,9 +147,14 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
                     views = 0
 
                 # 📌 Abrir el video en nueva pestaña para obtener métricas
-                video_page = await browser.new_page()
-                await video_page.goto(link)
-                await asyncio.sleep(10)
+                video_page = await context.new_page()
+                try:
+                    await video_page.goto(link, timeout=30000)  # 🔹 Manejo de timeout
+                    await asyncio.sleep(7)  # 🔹 Espera aleatoria para evitar bloqueos
+                except:
+                    st.write(f"⚠️ No se pudo cargar el video: {link}")
+                    await video_page.close()
+                    continue  # 🔹 Si la carga falla, sigue con el siguiente video
 
                 async def safe_extract(selector):
                     try:
@@ -147,24 +181,33 @@ async def get_tiktok_data(username, num_videos=None, date_range=None, include_pi
 
                 await video_page.close()
 
-                if num_videos and len(video_data) >= num_videos:
-                    break  
-            except:
+                # 📌 Obtener más vídeos de los necesarios para poder filtrar por fecha
+                extra_videos = num_videos + 3  # 🔹 Analizar algunos más de los solicitados
+
+                if extra_videos and len(video_data) >= extra_videos:
+                    break
+            except Exception as e:
+                st.write(f"⚠️ Error en el procesamiento del video {idx}: {e}")
                 continue
 
         await browser.close()
+        # 📌 Ordenar los vídeos por fecha (de más reciente a más antiguo)
+        video_data.sort(key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"), reverse=True)
+        # 📌 Seleccionar los últimos 'x' vídeos, sean anclados o no
+        video_data = video_data[:num_videos]
         return profile_data, video_data
+
 
 # 📌 Interfaz con Streamlit
 st.title("📌 Analiza una cuenta de TikTok")
 
 # 📌 Input de usuario
 username = st.text_input("Introduce el nombre de usuario de TikTok:")
-option = st.radio("¿Cómo deseas analizar los vídeos?", ["Cantidad de vídeos", "Rango de fechas"])
+option = st.radio("¿Cómo deseas analizar los vídeos?", ["Cantidad de vídeos", "Rango de fechas (sólo analiza últimos 36 vídeos)"])
 include_pinned = st.checkbox("Incluir vídeos anclados", value=True)
 
 if option == "Cantidad de vídeos":
-    num_videos = st.slider("Número de vídeos a analizar:", 1, 50, 10)
+    num_videos = st.slider("Número de vídeos a analizar:", 1, 36, 10)
     date_range = None
 else:
     num_videos = None
@@ -276,4 +319,3 @@ if st.button("Obtener Datos") and username:
                 if key in st.session_state:
                     del st.session_state[key]
             st.experimental_rerun()
-
